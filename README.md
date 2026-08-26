@@ -7,7 +7,7 @@ npm install
 npm run dev      # -> http://localhost:4321
 ```
 
-No API keys required, no billing, no rate limits. Map tiles come from OpenStreetMap/CARTO and Esri.
+No API keys required, no billing, no rate limits. Map tiles come from OpenStreetMap (street) and Esri (satellite) — neither needs an API key.
 
 ## The data
 

@@ -540,7 +540,7 @@ export default function App() {
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-center gap-2 px-5 text-center text-[12px] font-semibold text-slate-400">
           <Database className="h-3.5 w-3.5" />
           {catalog.length.toLocaleString()} businesses across {DUBAI_AREAS.length} Dubai districts ·
-          Business data © OpenStreetMap contributors (ODbL) · Tiles © CARTO &amp; Esri
+          Business data &amp; map tiles © OpenStreetMap contributors (ODbL) · Satellite © Esri
         </div>
       </footer>
 

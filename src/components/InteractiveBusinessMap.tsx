@@ -35,10 +35,13 @@ const escapeHtml = (value: string): string =>
 
 const TILE_LAYERS = {
   street: {
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    // OpenStreetMap's standard tiles: no API key, no signup. CARTO's basemaps
+    // now watermark every tile with "API KEY REQUIRED" off localhost, which is
+    // only visible once deployed.
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
     attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    maxZoom: 20,
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
   },
   satellite: {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',

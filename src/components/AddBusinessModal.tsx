@@ -113,6 +113,7 @@ export default function AddBusinessModal({ open, onClose, onSubmit }: Props) {
       amenities: form.amenities.split(',').map((t) => t.trim()).filter(Boolean),
       verified: false,
       featured: false,
+      source: 'curated',
       hours: WEEKDAYS.map((day) => ({ day, open: form.openTime, close: form.closeTime })),
     };
 

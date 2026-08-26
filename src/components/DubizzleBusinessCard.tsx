@@ -28,7 +28,8 @@ export default function DubizzleBusinessCard({
   const [photoIndex, setPhotoIndex] = useState(0);
   const category = getCategory(business.category);
   const Icon = getIcon(category.icon);
-  const open = isOpenNow(business);
+  const hoursKnown = !business.hoursUnknown && business.hours.length > 0;
+  const open = hoursKnown && isOpenNow(business);
   const photos = business.photos.length > 0 ? business.photos : [''];
   const photo = photos[Math.min(photoIndex, photos.length - 1)];
 
@@ -135,25 +136,35 @@ export default function DubizzleBusinessCard({
 
           {/* Rating + meta */}
           <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px]">
-            <span className="inline-flex items-center gap-1 font-bold text-slate-900">
-              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-              {business.rating.toFixed(1)}
-              <span className="font-medium text-slate-400">
-                ({business.reviewCount.toLocaleString()})
+            {business.rating > 0 ? (
+              <span className="inline-flex items-center gap-1 font-bold text-slate-900">
+                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                {business.rating.toFixed(1)}
+                <span className="font-medium text-slate-400">
+                  ({business.reviewCount.toLocaleString()})
+                </span>
               </span>
-            </span>
+            ) : (
+              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-500">
+                No ratings yet
+              </span>
+            )}
             <span className="font-bold text-slate-700">{priceLabel(business.priceTier)}</span>
-            <span
-              className={`inline-flex items-center gap-1 font-bold ${
-                open ? 'text-emerald-600' : 'text-slate-400'
-              }`}
-            >
+            {hoursKnown ? (
               <span
-                className={`h-1.5 w-1.5 rounded-full ${open ? 'bg-emerald-500' : 'bg-slate-300'}`}
-              />
-              {open ? 'Open now' : 'Closed'}
-              <span className="font-medium text-slate-400">· {todayHours(business)}</span>
-            </span>
+                className={`inline-flex items-center gap-1 font-bold ${
+                  open ? 'text-emerald-600' : 'text-slate-400'
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${open ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                />
+                {open ? 'Open now' : 'Closed'}
+                <span className="font-medium text-slate-400">· {todayHours(business)}</span>
+              </span>
+            ) : (
+              <span className="font-medium text-slate-400">Hours not listed</span>
+            )}
           </div>
 
           <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-slate-500">
@@ -173,16 +184,18 @@ export default function DubizzleBusinessCard({
             )}
 
             <div className="ml-auto flex items-center gap-2">
-              <a
-                href={whatsappUrl(business)}
-                target="_blank"
-                rel="noreferrer noopener"
-                onClick={(e) => e.stopPropagation()}
-                className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-emerald-500 px-3 text-[12px] font-bold text-white transition hover:bg-emerald-600"
-              >
-                <MessageCircle className="h-3.5 w-3.5" />
-                WhatsApp
-              </a>
+              {business.whatsapp && (
+                <a
+                  href={whatsappUrl(business)}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-emerald-500 px-3 text-[12px] font-bold text-white transition hover:bg-emerald-600"
+                >
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  WhatsApp
+                </a>
+              )}
               <a
                 href={directionsUrl(business)}
                 target="_blank"

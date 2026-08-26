@@ -226,61 +226,180 @@ export default function InteractiveBusinessMap({
   }, [origin, radiusKm, hasUsableSize]);
 
   /* ------------------------------- Markers -------------------------------- */
-  useEffect(() => {
+  /*
+   * The catalogue runs to tens of thousands of businesses, which Leaflet
+   * cannot hold as individual markers. Instead we cluster per viewport: on
+   * every pan/zoom we project only the points currently in bounds into pixel
+   * space, bucket them into a fixed pixel grid, and instantiate one marker per
+   * bucket. Marker count is therefore bounded by screen area (~250), not by
+   * dataset size, while every business remains addressable.
+   */
+  const pointsRef = useRef<Business[]>([]);
+  pointsRef.current = plottable;
+
+  const CELL_PX = 62;
+
+  /** Builds a single business pin, or null if its coordinates are unusable. */
+  const buildBusinessMarker = useCallback((b: Business): L.Marker | null => {
+    const lat = toValidCoord(b.lat);
+    const lng = toValidCoord(b.lng);
+    if (lat === null || lng === null) return null;
+
+    const color = categoryColor(b.category);
+    const rated = Number.isFinite(b.rating) && b.rating > 0;
+    const label = rated ? `${b.rating.toFixed(1)} &#9733;` : '&#9679;';
+    const html = `
+      <div style="position:relative;display:flex;flex-direction:column;align-items:center">
+        <div style="display:flex;align-items:center;gap:3px;background:${color};color:#fff;
+                    padding:3px 7px;border-radius:9px;font-size:11px;font-weight:800;
+                    white-space:nowrap;box-shadow:0 2px 8px rgba(16,24,40,.3);
+                    border:1.5px solid #fff;font-family:'Plus Jakarta Sans',sans-serif">
+          ${label}
+        </div>
+        <div style="width:2px;height:7px;background:${color}"></div>
+      </div>`;
+
+    const marker = L.marker([lat, lng], {
+      icon: L.divIcon({
+        className: 'bf-marker',
+        html,
+        iconSize: [46, 30],
+        iconAnchor: [23, 30],
+      }),
+      title: b.name,
+    });
+
+    marker.bindPopup(
+      `<div style="font-family:'Plus Jakarta Sans',sans-serif">
+         <img src="${escapeHtml(b.photos[0] ?? '')}" alt="" style="width:100%;height:104px;object-fit:cover;border-radius:14px 14px 0 0;display:block" />
+         <div style="padding:10px 12px 12px">
+           <div style="font-weight:800;font-size:13.5px;color:#0f172a;line-height:1.25">${escapeHtml(b.name)}</div>
+           <div style="font-size:11.5px;color:#64748b;margin-top:2px">${escapeHtml(b.subcategory)} &middot; ${escapeHtml(b.area)}</div>
+           <div style="font-size:11.5px;color:#0f172a;margin-top:6px;font-weight:700">
+             ${rated
+               ? `&#9733; ${b.rating.toFixed(1)} <span style="color:#94a3b8;font-weight:500">(${b.reviewCount.toLocaleString()})</span>`
+               : '<span style="color:#94a3b8;font-weight:600">No ratings yet</span>'}
+           </div>
+         </div>
+       </div>`,
+      { closeButton: true, maxWidth: 232 }
+    );
+    return marker;
+  }, []);
+
+  const renderMarkers = useCallback(() => {
     const map = mapRef.current;
     const group = markersRef.current;
     if (!map || !group || !hasUsableSize(map)) return;
 
+    let bounds: L.LatLngBounds;
+    try {
+      bounds = map.getBounds().pad(0.25);
+    } catch {
+      return;
+    }
+    if (!bounds.isValid()) return;
+
     group.clearLayers();
     markerIndex.current.clear();
 
-    plottable.forEach((b) => {
+    interface Cell { items: Business[]; sx: number; sy: number }
+    const cells = new Map<string, Cell>();
+
+    for (const b of pointsRef.current) {
       const lat = toValidCoord(b.lat);
       const lng = toValidCoord(b.lng);
-      if (lat === null || lng === null) return;
+      if (lat === null || lng === null) continue;
+      if (!bounds.contains([lat, lng])) continue;
 
-      const color = categoryColor(b.category);
-      const rating = Number.isFinite(b.rating) ? b.rating.toFixed(1) : '—';
-      const html = `
-        <div style="position:relative;display:flex;flex-direction:column;align-items:center">
-          <div style="display:flex;align-items:center;gap:3px;background:${color};color:#fff;
-                      padding:3px 7px;border-radius:9px;font-size:11px;font-weight:800;
-                      white-space:nowrap;box-shadow:0 2px 8px rgba(16,24,40,.3);
-                      border:1.5px solid #fff;font-family:'Plus Jakarta Sans',sans-serif">
-            ${escapeHtml(rating)} &#9733;
-          </div>
-          <div style="width:2px;height:7px;background:${color}"></div>
-        </div>`;
+      let px: L.Point;
+      try {
+        px = map.latLngToLayerPoint([lat, lng]);
+      } catch {
+        continue;
+      }
+      if (!Number.isFinite(px.x) || !Number.isFinite(px.y)) continue;
 
-      const marker = L.marker([lat, lng], {
+      const key = `${Math.floor(px.x / CELL_PX)}:${Math.floor(px.y / CELL_PX)}`;
+      const cell = cells.get(key);
+      if (cell) {
+        cell.items.push(b);
+        cell.sx += lat;
+        cell.sy += lng;
+      } else {
+        cells.set(key, { items: [b], sx: lat, sy: lng });
+      }
+    }
+
+    cells.forEach((cell) => {
+      if (cell.items.length === 1) {
+        const b = cell.items[0];
+        const marker = buildBusinessMarker(b);
+        if (!marker) return;
+        marker.on('click', () => onSelectRef.current(b));
+        marker.addTo(group);
+        markerIndex.current.set(b.id, marker);
+        return;
+      }
+
+      const count = cell.items.length;
+      const lat = cell.sx / count;
+      const lng = cell.sy / count;
+      if (!isValidCoordPair(lat, lng)) return;
+
+      const size = count > 500 ? 54 : count > 100 ? 48 : count > 20 ? 42 : 36;
+      const label = count > 999 ? `${Math.round(count / 1000)}k` : String(count);
+      const cluster = L.marker([lat, lng], {
         icon: L.divIcon({
           className: 'bf-marker',
-          html,
-          iconSize: [46, 30],
-          iconAnchor: [23, 30],
+          html: `<div style="width:${size}px;height:${size}px;border-radius:9999px;
+                   display:flex;align-items:center;justify-content:center;
+                   background:rgba(228,0,43,.92);color:#fff;font-weight:800;
+                   font-size:${size > 45 ? 14 : 12}px;border:3px solid #fff;
+                   box-shadow:0 3px 12px rgba(16,24,40,.35);
+                   font-family:'Plus Jakarta Sans',sans-serif">${label}</div>`,
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
         }),
-        title: b.name,
+        title: `${count} businesses`,
       });
 
-      marker.bindPopup(
-        `<div style="font-family:'Plus Jakarta Sans',sans-serif">
-           <img src="${escapeHtml(b.photos[0] ?? '')}" alt="" style="width:100%;height:104px;object-fit:cover;border-radius:14px 14px 0 0;display:block" />
-           <div style="padding:10px 12px 12px">
-             <div style="font-weight:800;font-size:13.5px;color:#0f172a;line-height:1.25">${escapeHtml(b.name)}</div>
-             <div style="font-size:11.5px;color:#64748b;margin-top:2px">${escapeHtml(b.subcategory)} &middot; ${escapeHtml(b.area)}</div>
-             <div style="font-size:11.5px;color:#0f172a;margin-top:6px;font-weight:700">
-               &#9733; ${escapeHtml(rating)} <span style="color:#94a3b8;font-weight:500">(${b.reviewCount.toLocaleString()})</span>
-             </div>
-           </div>
-         </div>`,
-        { closeButton: true, maxWidth: 232 }
-      );
+      cluster.on('click', () => {
+        const m = mapRef.current;
+        if (!m || !hasUsableSize(m)) return;
+        try {
+          const pts = cell.items
+            .filter((b) => isValidCoordPair(b.lat, b.lng))
+            .map((b) => [b.lat, b.lng] as [number, number]);
+          const cb = L.latLngBounds(pts);
+          if (cb.isValid()) {
+            m.fitBounds(cb, { padding: [56, 56], maxZoom: 18, animate: true });
+          }
+        } catch {
+          /* ignore */
+        }
+      });
 
-      marker.on('click', () => onSelectRef.current(b));
-      marker.addTo(group);
-      markerIndex.current.set(b.id, marker);
+      cluster.addTo(group);
     });
-  }, [plottable, hasUsableSize]);
+  }, [hasUsableSize, buildBusinessMarker]);
+
+  /* Re-cluster on data change and on every pan/zoom. */
+  useEffect(() => {
+    renderMarkers();
+  }, [plottable, renderMarkers]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const handler = () => renderMarkers();
+    map.on('moveend', handler);
+    map.on('zoomend', handler);
+    return () => {
+      map.off('moveend', handler);
+      map.off('zoomend', handler);
+    };
+  }, [renderMarkers]);
 
   /* ------------------- Recentre when the origin changes ------------------- */
   useEffect(() => {

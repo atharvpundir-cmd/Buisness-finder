@@ -1,6 +1,7 @@
 import {
-  Briefcase, Car, Coffee, Dumbbell, LayoutGrid, Pill, Scissors,
-  ShoppingBag, ShoppingCart, Stethoscope, UtensilsCrossed,
+  BedDouble, Briefcase, Car, Coffee, Dumbbell, FerrisWheel, GraduationCap,
+  Landmark, LayoutGrid, Pill, Scissors, ShoppingBag, ShoppingCart, Store,
+  Stethoscope, UtensilsCrossed, Wrench,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -19,6 +20,12 @@ const ICONS: Record<string, LucideIcon> = {
   Pill,
   Car,
   Briefcase,
+  BedDouble,
+  Landmark,
+  GraduationCap,
+  Wrench,
+  FerrisWheel,
+  Store,
   LayoutGrid,
 };
 

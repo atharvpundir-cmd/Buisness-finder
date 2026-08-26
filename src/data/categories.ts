@@ -56,6 +56,36 @@ export const CATEGORIES: BusinessCategory[] = [
     icon: 'Briefcase', color: '#EA580C',
     chipBg: 'bg-orange-50', chipText: 'text-orange-700', chipRing: 'ring-orange-200',
   },
+  {
+    id: 'hotels', label: 'Hotels & Stays', labelAr: 'فنادق',
+    icon: 'BedDouble', color: '#9333EA',
+    chipBg: 'bg-purple-50', chipText: 'text-purple-700', chipRing: 'ring-purple-200',
+  },
+  {
+    id: 'banks', label: 'Banks & ATMs', labelAr: 'بنوك',
+    icon: 'Landmark', color: '#0D9488',
+    chipBg: 'bg-teal-50', chipText: 'text-teal-700', chipRing: 'ring-teal-200',
+  },
+  {
+    id: 'education', label: 'Schools & Education', labelAr: 'تعليم',
+    icon: 'GraduationCap', color: '#4F46E5',
+    chipBg: 'bg-indigo-50', chipText: 'text-indigo-700', chipRing: 'ring-indigo-200',
+  },
+  {
+    id: 'services', label: 'Professional Services', labelAr: 'خدمات',
+    icon: 'Wrench', color: '#0284C7',
+    chipBg: 'bg-sky-50', chipText: 'text-sky-700', chipRing: 'ring-sky-200',
+  },
+  {
+    id: 'leisure', label: 'Leisure & Attractions', labelAr: 'ترفيه',
+    icon: 'FerrisWheel', color: '#C026D3',
+    chipBg: 'bg-fuchsia-50', chipText: 'text-fuchsia-700', chipRing: 'ring-fuchsia-200',
+  },
+  {
+    id: 'other', label: 'Other Businesses', labelAr: 'أخرى',
+    icon: 'Store', color: '#64748B',
+    chipBg: 'bg-slate-100', chipText: 'text-slate-700', chipRing: 'ring-slate-200',
+  },
 ];
 
 const CATEGORY_MAP: Record<string, BusinessCategory> = Object.fromEntries(

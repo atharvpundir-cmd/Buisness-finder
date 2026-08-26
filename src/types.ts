@@ -12,7 +12,13 @@ export type CategoryId =
   | 'healthcare'
   | 'pharmacies'
   | 'automotive'
-  | 'coworking';
+  | 'coworking'
+  | 'hotels'
+  | 'banks'
+  | 'education'
+  | 'services'
+  | 'leisure'
+  | 'other';
 
 /** A top-level business category, with the palette used by cards and map pins. */
 export interface BusinessCategory {
@@ -80,6 +86,10 @@ export interface Business {
   hours: OpeningHourDay[];
   /** Populated at runtime by the distance engine, relative to the active origin. */
   distanceKm?: number;
+  /** Where the record came from: hand-curated, or imported from OpenStreetMap. */
+  source: 'curated' | 'osm';
+  /** True when OSM listed no parsable opening_hours, so open/closed is unknown. */
+  hoursUnknown?: boolean;
 }
 
 /** A Dubai district with a real centroid, used for manual origin selection. */

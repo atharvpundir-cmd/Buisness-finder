@@ -46,7 +46,8 @@ export default function BusinessDetailModal({
 
   const category = getCategory(business.category);
   const Icon = getIcon(category.icon);
-  const open = isOpenNow(business);
+  const hoursKnown = !business.hoursUnknown && business.hours.length > 0;
+  const open = hoursKnown && isOpenNow(business);
   const photos = business.photos.length > 0 ? business.photos : [''];
   const todayName = WEEKDAYS[(new Date().getDay() + 6) % 7];
 
@@ -168,33 +169,45 @@ export default function BusinessDetailModal({
                 </p>
               </div>
 
-              <div className="text-right">
-                <div className="inline-flex items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-2 ring-1 ring-amber-200">
-                  <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                  <span className="text-lg font-extrabold text-slate-900">
-                    {business.rating.toFixed(1)}
-                  </span>
+              {business.rating > 0 ? (
+                <div className="text-right">
+                  <div className="inline-flex items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-2 ring-1 ring-amber-200">
+                    <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                    <span className="text-lg font-extrabold text-slate-900">
+                      {business.rating.toFixed(1)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] font-semibold text-slate-400">
+                    {business.reviewCount.toLocaleString()} reviews
+                  </p>
                 </div>
-                <p className="mt-1 text-[11px] font-semibold text-slate-400">
-                  {business.reviewCount.toLocaleString()} reviews
-                </p>
-              </div>
+              ) : (
+                <span className="rounded-xl bg-slate-100 px-3 py-2 text-[12px] font-bold text-slate-500">
+                  No ratings yet
+                </span>
+              )}
             </div>
 
             {/* Status strip */}
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-bold ring-1 ${
-                  open
-                    ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-                    : 'bg-slate-100 text-slate-500 ring-slate-200'
-                }`}
-              >
+              {hoursKnown ? (
                 <span
-                  className={`h-1.5 w-1.5 rounded-full ${open ? 'bg-emerald-500' : 'bg-slate-400'}`}
-                />
-                {open ? 'Open now' : 'Closed'} · {todayHours(business)}
-              </span>
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-bold ring-1 ${
+                    open
+                      ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                      : 'bg-slate-100 text-slate-500 ring-slate-200'
+                  }`}
+                >
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${open ? 'bg-emerald-500' : 'bg-slate-400'}`}
+                  />
+                  {open ? 'Open now' : 'Closed'} · {todayHours(business)}
+                </span>
+              ) : (
+                <span className="rounded-full bg-slate-100 px-3 py-1.5 text-[12px] font-bold text-slate-500">
+                  Hours not listed
+                </span>
+              )}
               <span className="rounded-full bg-slate-100 px-3 py-1.5 text-[12px] font-bold text-slate-700">
                 {priceLabel(business.priceTier)}
               </span>
@@ -207,15 +220,22 @@ export default function BusinessDetailModal({
 
             {/* Actions */}
             <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <a
-                href={whatsappUrl(business)}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-emerald-500 text-[13px] font-bold text-white transition hover:bg-emerald-600"
-              >
-                <MessageCircle className="h-4 w-4" />
-                WhatsApp
-              </a>
+              {business.whatsapp ? (
+                <a
+                  href={whatsappUrl(business)}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-emerald-500 text-[13px] font-bold text-white transition hover:bg-emerald-600"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  WhatsApp
+                </a>
+              ) : (
+                <span className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-200 text-[13px] font-bold text-slate-300">
+                  <MessageCircle className="h-4 w-4" />
+                  No number
+                </span>
+              )}
               <a
                 href={directionsUrl(business)}
                 target="_blank"
@@ -225,13 +245,20 @@ export default function BusinessDetailModal({
                 <Navigation className="h-4 w-4" />
                 Directions
               </a>
-              <a
-                href={telUrl(business)}
-                className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-slate-200 text-[13px] font-bold text-slate-700 transition hover:bg-slate-50"
-              >
-                <Phone className="h-4 w-4" />
-                Call
-              </a>
+              {business.phone ? (
+                <a
+                  href={telUrl(business)}
+                  className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-slate-200 text-[13px] font-bold text-slate-700 transition hover:bg-slate-50"
+                >
+                  <Phone className="h-4 w-4" />
+                  Call
+                </a>
+              ) : (
+                <span className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-200 text-[13px] font-bold text-slate-300">
+                  <Phone className="h-4 w-4" />
+                  No phone
+                </span>
+              )}
               {business.website ? (
                 <a
                   href={business.website}
@@ -265,6 +292,7 @@ export default function BusinessDetailModal({
             </section>
 
             {/* Hours */}
+            {hoursKnown && (
             <section className="mt-6">
               <h3 className="text-[13px] font-extrabold uppercase tracking-wider text-slate-400">
                 Opening hours
@@ -306,8 +334,10 @@ export default function BusinessDetailModal({
                 })}
               </div>
             </section>
+            )}
 
             {/* Amenities */}
+            {business.amenities.length > 0 && (
             <section className="mt-6">
               <h3 className="text-[13px] font-extrabold uppercase tracking-wider text-slate-400">
                 Amenities
@@ -324,6 +354,7 @@ export default function BusinessDetailModal({
                 ))}
               </ul>
             </section>
+            )}
 
             {/* Tags */}
             <section className="mt-6">

@@ -37,6 +37,10 @@ Business data is © OpenStreetMap contributors, licensed ODbL; the attribution i
 
 **Filtering.** Instant search across names, Arabic names, tags, subcategories, amenities and addresses; a 16-category carousel with live per-category counts; Open Now, Verified Only and 4.5+ toggles; sort by distance, rating, reviews or name. Favourites persist to `localStorage`. Results paginate 24 at a time, so 9,000 matches never means 9,000 DOM nodes.
 
+**Accounts.** Sign up and sign in from the header, with a user menu, per-account saved businesses, and a gate on listing a business. Passwords are never stored — `src/lib/auth.ts` keeps a random 16-byte salt and a 210,000-iteration PBKDF2-SHA256 derivation per account via Web Crypto, re-derives on sign-in, and compares in length-independent time. Unknown emails still perform a derivation so a missing account and a wrong password cost the same.
+
+> This is client-side only. There is no server, so accounts live in this browser's `localStorage` and anyone who can edit storage can bypass the check. It gates UI, not trust. `signUp`/`signIn` are the only two functions to swap when a real backend exists.
+
 **Modals.** Full business profile (photo carousel, live open/closed state, weekly hours table, amenities, WhatsApp and Google Maps navigation); a *List your business* form that places a new pin in the chosen district; and a *Smart Finder* concierge that parses a natural-language request into a concrete filter patch.
 
 ---
@@ -69,6 +73,7 @@ src/
     categories.ts                16 categories with Lucide icon names + colour schemes
     businesses.ts                34 curated businesses, Haversine, opening-hours engine
   lib/
+    auth.ts                      PBKDF2 account store, sessions, password strength
     overpass.ts                  OSM tag -> category mapping, opening_hours parser,
                                  dataset loader and live Overpass client
     links.ts                     wa.me / Google Maps / tel link builders
@@ -83,6 +88,7 @@ src/
     BusinessDetailModal.tsx      Full profile
     AddBusinessModal.tsx         Onboarding form
     AiAssistantModal.tsx         Smart Finder + `planFromPrompt` intent parser
+    AuthModal.tsx                Combined sign-in / sign-up with strength meter
   App.tsx                        State, distance recalculation, responsive layout
 ```
 

@@ -1,4 +1,8 @@
-import { Heart, MapPin, Plus, Search, Sparkles, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import {
+  ChevronDown, Heart, LogOut, MapPin, Plus, Search, Sparkles, UserRound, X,
+} from 'lucide-react';
+import type { AuthUser } from '../lib/auth';
 
 interface Props {
   query: string;
@@ -8,7 +12,15 @@ interface Props {
   onToggleFavorites: () => void;
   favoritesCount: number;
   favoritesActive: boolean;
+  user: AuthUser | null;
+  onSignIn: () => void;
+  onSignUp: () => void;
+  onSignOut: () => void;
 }
+
+/** First letters of the user's name, for the avatar chip. */
+const initials = (name: string): string =>
+  name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('') || '?';
 
 export default function DubizzleNavbar({
   query,
@@ -18,7 +30,28 @@ export default function DubizzleNavbar({
   onToggleFavorites,
   favoritesCount,
   favoritesActive,
+  user,
+  onSignIn,
+  onSignUp,
+  onSignOut,
 }: Props) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false);
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
+
   return (
     <header className="sticky top-0 z-[900] border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
       <div className="mx-auto flex h-16 max-w-[1600px] items-center gap-3 px-3 sm:px-5">
@@ -89,6 +122,85 @@ export default function DubizzleNavbar({
               </span>
             )}
           </button>
+
+          {user ? (
+            <div className="relative" ref={menuRef}>
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 pl-1.5 pr-2.5 transition hover:bg-slate-50"
+              >
+                <span className="grid h-8 w-8 place-items-center rounded-lg bg-dubai-600 text-[12px] font-extrabold text-white">
+                  {initials(user.name)}
+                </span>
+                <span className="hidden max-w-[110px] truncate text-sm font-bold text-slate-800 sm:block">
+                  {user.name.split(' ')[0]}
+                </span>
+                <ChevronDown className="h-4 w-4 text-slate-400" />
+              </button>
+
+              {menuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-[52px] w-60 animate-fadeUp overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-pop"
+                >
+                  <div className="border-b border-slate-100 px-4 py-3">
+                    <p className="truncate text-sm font-extrabold text-slate-900">{user.name}</p>
+                    <p className="truncate text-[12px] font-semibold text-slate-400">
+                      {user.email}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onToggleFavorites();
+                    }}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-[13px] font-bold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    <Heart className="h-4 w-4 text-slate-400" />
+                    Saved businesses
+                    <span className="ml-auto text-[12px] font-extrabold text-slate-400">
+                      {favoritesCount}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onSignOut();
+                    }}
+                    className="flex w-full items-center gap-2.5 border-t border-slate-100 px-4 py-2.5 text-left text-[13px] font-bold text-dubai-600 transition hover:bg-dubai-50"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onSignIn}
+                className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 text-sm font-bold text-slate-700 transition hover:border-dubai-200 hover:bg-dubai-50 hover:text-dubai-700"
+              >
+                <UserRound className="h-4 w-4" />
+                <span className="hidden sm:inline">Sign in</span>
+              </button>
+              <button
+                type="button"
+                onClick={onSignUp}
+                className="hidden h-11 items-center rounded-xl border border-slate-200 px-3.5 text-sm font-bold text-slate-700 transition hover:border-dubai-200 hover:bg-dubai-50 hover:text-dubai-700 lg:inline-flex"
+              >
+                Sign up
+              </button>
+            </>
+          )}
 
           <button
             type="button"

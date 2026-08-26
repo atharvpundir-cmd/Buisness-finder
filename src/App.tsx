@@ -13,10 +13,12 @@ import InteractiveBusinessMap from './components/InteractiveBusinessMap';
 import BusinessDetailModal from './components/BusinessDetailModal';
 import AddBusinessModal from './components/AddBusinessModal';
 import AiAssistantModal, { type AiPlan } from './components/AiAssistantModal';
+import AuthModal, { type AuthMode } from './components/AuthModal';
 
 import { BUSINESSES, calculateDistance, isOpenNow } from './data/businesses';
 import { DEFAULT_AREA, DUBAI_AREAS } from './data/dubaiAreas';
 import { loadShippedDataset, toBusiness } from './lib/overpass';
+import { currentUser, signOut, type AuthUser } from './lib/auth';
 import type {
   Business, CategoryId, FilterState, GpsStatus, UserLocation,
 } from './types';
@@ -49,13 +51,25 @@ function snapToArea(lat: number, lng: number) {
   return best;
 }
 
-function readFavorites(): string[] {
+/** Favourites are scoped per account, so two users on one device stay separate. */
+const favoritesKey = (user: AuthUser | null): string =>
+  `${FAVORITES_KEY}:${user?.id ?? 'guest'}`;
+
+function readFavorites(key: string): string[] {
   try {
-    const raw = window.localStorage.getItem(FAVORITES_KEY);
+    const raw = window.localStorage.getItem(key);
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed) ? parsed.filter((v) => typeof v === 'string') : [];
   } catch {
     return [];
+  }
+}
+
+function writeFavorites(key: string, ids: string[]): void {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(ids));
+  } catch {
+    /* private mode / storage disabled — favourites stay in memory */
   }
 }
 
@@ -69,8 +83,15 @@ export default function App() {
   const [userAdded, setUserAdded] = useState<Business[]>([]);
 
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
-  const [favorites, setFavorites] = useState<string[]>(readFavorites);
+  const [user, setUser] = useState<AuthUser | null>(() => currentUser());
+  const [favorites, setFavorites] = useState<string[]>(() =>
+    readFavorites(favoritesKey(currentUser()))
+  );
   const [page, setPage] = useState(1);
+
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>('login');
+  const [authReason, setAuthReason] = useState<string | null>(null);
 
   const [areaId, setAreaId] = useState<string>(DEFAULT_AREA.id);
   const [userLocation, setUserLocation] = useState<UserLocation>({
@@ -128,20 +149,39 @@ export default function App() {
     return out;
   }, [userAdded, osmBusinesses]);
 
-  /* ------------------------------ Favourites ----------------------------- */
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
-    } catch {
-      /* private mode / storage disabled — favourites stay in memory */
-    }
-  }, [favorites]);
+  /* -------------------------------- Auth --------------------------------- */
+  const favKey = useMemo(() => favoritesKey(user), [user]);
 
-  const toggleFavorite = useCallback((id: string) => {
-    setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
-    );
+  const openAuth = useCallback((mode: AuthMode, reason?: string) => {
+    setAuthMode(mode);
+    setAuthReason(reason ?? null);
+    setAuthOpen(true);
   }, []);
+
+  const handleAuthenticated = useCallback((next: AuthUser) => {
+    setUser(next);
+    setFavorites(readFavorites(favoritesKey(next)));
+    setAuthReason(null);
+  }, []);
+
+  const handleSignOut = useCallback(() => {
+    signOut();
+    setUser(null);
+    setFavorites(readFavorites(favoritesKey(null)));
+    setFilters((f) => ({ ...f, favoritesOnly: false }));
+  }, []);
+
+  /* ------------------------------ Favourites ----------------------------- */
+  const toggleFavorite = useCallback(
+    (id: string) => {
+      setFavorites((prev) => {
+        const next = prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id];
+        writeFavorites(favKey, next);
+        return next;
+      });
+    },
+    [favKey]
+  );
 
   /* ------------------------------ Location ------------------------------- */
   const handleAreaChange = useCallback((nextId: string) => {
@@ -279,6 +319,14 @@ export default function App() {
     []
   );
 
+  const requestAddBusiness = useCallback(() => {
+    if (!user) {
+      openAuth('signup', 'Create a free account to list your business on BuisnessFind.');
+      return;
+    }
+    setAddOpen(true);
+  }, [user, openAuth]);
+
   const handleAddBusiness = useCallback((business: Business) => {
     setUserAdded((prev) => [business, ...prev]);
     setFilters((f) => ({ ...f, category: 'all', query: '', favoritesOnly: false }));
@@ -301,11 +349,15 @@ export default function App() {
       <DubizzleNavbar
         query={filters.query}
         onQueryChange={(v) => setFilter('query', v)}
-        onAddBusiness={() => setAddOpen(true)}
+        onAddBusiness={requestAddBusiness}
         onOpenAi={() => setAiOpen(true)}
         onToggleFavorites={() => setFilter('favoritesOnly', !filters.favoritesOnly)}
         favoritesCount={favorites.length}
         favoritesActive={filters.favoritesOnly}
+        user={user}
+        onSignIn={() => openAuth('login')}
+        onSignUp={() => openAuth('signup')}
+        onSignOut={handleSignOut}
       />
 
       <LocationSelectorBar
@@ -394,6 +446,15 @@ export default function App() {
                   Showing your {favorites.length} saved{' '}
                   {favorites.length === 1 ? 'business' : 'businesses'}
                 </span>
+                {!user && (
+                  <button
+                    type="button"
+                    onClick={() => openAuth('signup', 'Create an account to keep your saved businesses.')}
+                    className="text-[12px] font-extrabold text-dubai-700 underline underline-offset-2"
+                  >
+                    Save to an account
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setFilter('favoritesOnly', false)}
@@ -493,6 +554,14 @@ export default function App() {
         open={addOpen}
         onClose={() => setAddOpen(false)}
         onSubmit={handleAddBusiness}
+      />
+      <AuthModal
+        open={authOpen}
+        mode={authMode}
+        onModeChange={setAuthMode}
+        onClose={() => setAuthOpen(false)}
+        onAuthenticated={handleAuthenticated}
+        reason={authReason}
       />
       <AiAssistantModal
         open={aiOpen}

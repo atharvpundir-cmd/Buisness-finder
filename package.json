@@ -1,0 +1,17 @@
+{
+  "name": "businessfind",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "Find restaurants, cafes, groceries, malls and other businesses near you, with Google ratings, reviews, friends and live location sharing.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

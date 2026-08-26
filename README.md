@@ -102,3 +102,52 @@ The Smart Finder is a deterministic rule engine (`planFromPrompt`), not a model 
 | `npm run build` | Typecheck then production build |
 | `npm run preview` | Serve the built output |
 | `npm run typecheck` | `tsc --noEmit` |
+
+---
+
+## Deployment
+
+**Repository:** `atharvpundir-cmd/Buisness-finder` (private)
+**Host:** Vercel — project `buisness-finder`, team *Atharv's team* (Hobby)
+
+### Vercel settings
+
+Vercel auto-detects the Vite preset; these are the effective values:
+
+| Setting | Value |
+|---|---|
+| Framework preset | Vite |
+| Install command | `npm install` |
+| Build command | `npm run build` |
+| Output directory | `dist` |
+
+There is deliberately **no `vercel.json`**. The app has no client-side router, so a SPA catch-all rewrite is unnecessary — and would be harmful, since `/(.*) → /index.html` would turn a genuine 404 on `/data/dubai-osm.json` into an HTML response that fails to parse as JSON.
+
+### Pushing changes
+
+The Vercel project is linked to this repository, so a single push updates both:
+
+```bash
+npm run build          # sanity check before publishing
+git add -A && git commit -m "..."
+git push origin main   # GitHub updated; Vercel redeploys automatically
+```
+
+Pushing to `main` creates a **Production** deployment. Any other branch produces a **Preview** deployment with its own URL.
+
+### A note on privacy
+
+The deployed site is **public** — anyone with the URL can open it. The repository is private, so the source is not, but the running app is.
+
+Two things follow from that:
+
+- The in-app sign-in (`src/lib/auth.ts`) is **client-side only and bypassable**. It gates UI, not access. Every static asset, including `/data/dubai-osm.json`, can be fetched directly regardless of whether anyone is "signed in".
+- Do not treat an unshared URL as private. `*.vercel.app` certificates appear in public Certificate Transparency logs and are scanned within minutes of issuance.
+
+To genuinely restrict access later, in increasing order of cost:
+
+1. **Vercel Middleware HTTP Basic Auth** — free, server-side, unlimited viewers, one shared password. Works on the Hobby plan and is Vercel's own documented workaround.
+2. **Vercel Pro ($20/mo)** — native Shareable Links (viewers need no account) plus unlimited free Viewer seats.
+3. **Password Protection** — Enterprise, or a **$150/mo** add-on on Pro. Not worth it for this use case.
+
+Vercel's free Hobby plan *cannot* protect a production domain: its only mode, Standard Protection, covers preview deployments and generated deployment URLs but explicitly excludes production domains.
